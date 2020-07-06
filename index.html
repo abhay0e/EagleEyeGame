@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        * {
+            margin: 0px;
+            padding: 0px;
+
+
+        }
+    </style>
+    <title>Eagle Eye</title>
+
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+
+    <script type="text/babel">
+
+
+        const WINDOW_HEIGHT = window.innerHeight
+        const WINDOW_WIDTH = window.innerWidth
+        //const WINDOW_LENGTH = Math.min(WINDOW_HEIGHT, WINDOW_WIDTH)
+        const WINDOW_LENGTH  = WINDOW_HEIGHT-37
+        const BOX_COUNT = 4
+        const SCORE_AREA_LENGTH = WINDOW_LENGTH * (0.1)
+        const CORRECT_IMAGE_LENGTH = WINDOW_LENGTH * (0.9) * (1 / BOX_COUNT)
+        const GAME_AREA_LENGTH = WINDOW_LENGTH * (0.9) * (1 - (1 / BOX_COUNT))
+        const BOX_LENGTH = Math.floor(GAME_AREA_LENGTH / BOX_COUNT)
+        const TIME = 3500
+
+        class GameArea extends React.Component {
+            constructor(props) {
+                super(props)
+                this.gameAreaStyle = {
+                    display: "flex",
+                    flexWrap: "wrap",
+                    width: GAME_AREA_LENGTH + "px",
+                    height: GAME_AREA_LENGTH + "px",
+
+                }
+                this.mainStyle = {
+                    width: WINDOW_WIDTH + "px",
+                    height: WINDOW_HEIGHT + "px",
+
+                }
+                this.boxStyle = {
+                    display: "fixed",
+                    width: BOX_LENGTH + "px",
+                    height: BOX_LENGTH + "px"
+                }
+
+                this.correctImageStyle = {
+                    display: "flex",
+                    width: GAME_AREA_LENGTH + "px",
+                    height: CORRECT_IMAGE_LENGTH + "px"
+                }
+
+                this.scoreAreaStyle = {
+                    display: "fixed",
+                    width: GAME_AREA_LENGTH + "px",
+                    height: SCORE_AREA_LENGTH + "px"
+                }
+
+                this.gameEndStyle = {
+                    textAlign: "center",
+                    margin: "25% 0%",
+                    padding: "25% 0%"
+                }
+
+                this.state = {
+                    score: 0,
+                    scoreChange: 0,
+                    life: 5,
+                    timeRemaining: TIME,
+                    images: getImages(BOX_COUNT, BOX_LENGTH),
+                    scoreChangeStyleData: { color: "(215,215,215,", opacity: 1 }
+
+                }
+            }
+
+            componentWillMount() {
+
+                this.decreaseTimeTimerId = setInterval(() => {
+                   this.decreaseTime()
+                }, 100);
+
+                this.decreaseColorOpacityTimerId = setInterval(() => {
+                    this.decreaseColorOpacity()
+                }, 100);
+
+                this.setScoreChangeStyle()
+            }
+
+            decreaseColorOpacity = () => {
+
+
+                let scoreChangeStyleData = this.state.scoreChangeStyleData
+                if (scoreChangeStyleData["opacity"] > 0) {
+                    scoreChangeStyleData["opacity"] -= 0.05
+                    this.setState({ scoreChangeStyleData: scoreChangeStyleData })
+                }else{
+                    //clearInterval(this.decreaseColorOpacityTimerId)
+                }
+
+                this.setScoreChangeStyle()
+            }
+
+            setScoreChangeStyle = () => {
+                let { color, opacity } = this.state.scoreChangeStyleData
+
+                color = "rgba" + color + opacity + ")"
+                let style = { backgroundColor: color }
+
+                this.setState({ scoreChangeStyle: style })
+            }
+
+            restartGame = () => {
+                this.setState({
+                    score: 0,
+                    scoreChange: 0,
+                    life: 5,
+                    timeRemaining: TIME,
+                    images: getImages(BOX_COUNT, BOX_LENGTH)
+
+                })
+
+                this.decreaseTimeTimerId = setInterval(() => {
+                    this.decreaseTime()
+                }, 100);
+
+            }
+
+            onClick = (i, j) => {
+                let correctImageIndex = this.state.images["correctImageIndex"]
+
+                if (correctImageIndex[0] == i && correctImageIndex[1] == j) {
+                    this.nextRound("correct")
+                } else {
+                    this.nextRound("incorrect")
+                }
+            }
+
+            decreaseTime = () => {
+
+                let t = this.state.timeRemaining
+
+                if (t !== 0) {
+                    this.setState((state, props) => ({ timeRemaining: state.timeRemaining - 100 }))
+                } else {
+                    this.nextRound("timeout")
+                }
+            }
+
+
+            nextRound = (action) => {
+
+                if (this.state.life > 0) {
+
+                    if (action == "correct") {
+                        this.setState((state, props) => ({
+                            score: state.score + 5,
+                            scoreChange: "+5",
+                            timeRemaining: TIME,
+                            images: getImages(BOX_COUNT, BOX_LENGTH),
+                            scoreChangeStyleData: { color: "(0,255,0,", opacity: 1 }
+
+                        }))
+                    }
+
+                    if (action == "incorrect") {
+                        this.setState((state, props) => ({
+                            score: state.score - 2,
+                            scoreChange: "-2",
+                            life: state.life - 1,
+                            timeRemaining: TIME,
+                            images: getImages(BOX_COUNT, BOX_LENGTH),
+                            scoreChangeStyleData: { color: "(255,0,0,", opacity: 1 }
+
+                        }))
+                    }
+
+                    if (action == "timeout") {
+                        this.setState((state, props) => ({
+                            scoreChange: "+0",
+                            timeRemaining: TIME,
+                            life: state.life - 1,
+                            images: getImages(BOX_COUNT, BOX_LENGTH),
+                            scoreChangeStyleData: { color: "(215,215,215,", opacity: 1 }
+
+                        }))
+                    }
+
+                } else {
+                    clearInterval(this.decreaseTimeTimerId)
+                    this.setState({ timeRemaining: 0 })
+                    return 0
+                }
+
+            }
+
+
+            render() {
+                let images = this.state.images
+                let index = images["correctImageIndex"]
+                let img = images["list"][index[0]][index[1]]
+
+
+                return this.state.life == 0 ?
+                    <div id="gameEnd" onClick={this.restartGame} style={this.gameEndStyle}>
+                        <h1>Game Ends !!!</h1>
+                        <h2>Your Score {this.state.score}</h2>
+                        <h3>Click to play again</h3>
+                    </div>
+                    :
+                    <div id="main" style={this.mainStyle}>
+                         <h1 style={{textAlign:"center"}}>EAGLE EYE </h1>
+                        <div id="scoreArea" style={this.scoreAreaStyle}>
+                            
+                            <p>Score &nbsp;&nbsp;&nbsp;&nbsp;
+                            <b>{this.state.score} </b>&nbsp;&nbsp;
+                            <span style={this.state.scoreChangeStyle}> {this.state.scoreChange} </span>
+                            </p>
+                            
+                            <label htmlFor="life">Life </label>
+                            <progress max={5} value={this.state.life}></progress>
+                            <br />
+                            <label htmlFor="timeRemaining">Time </label>
+                            <progress max={TIME} value={this.state.timeRemaining}></progress>
+                        </div>
+                        <div id="correctImage" style={this.correctImageStyle}>
+                            <div><h2 style={{ marginTop:"25%" }}>Find this image </h2></div>
+                            <div>{img}</div>
+                        </div>
+                        <div id="gameArea" style={this.gameAreaStyle}>
+                            {this.state.images["list"].map((rowImg, i) =>
+                                rowImg.map((img, j) =>
+                                    <div style={this.boxStyle} onClick={() => this.onClick(i, j)} key={i + "" + j}> {img}</div>
+                                ))}
+                        </div>
+                    </div>
+
+
+            }
+        }
+
+
+
+
+
+        ReactDOM.render(<GameArea />, document.getElementById("root"))
+
+
+        //*************************  FUNCTIONS  ********************************      
+
+        function getImages(boxCount, length) {
+            let images = { list: [] }
+
+            for (let i = 0; i < boxCount; i++) {
+                let imageRow = []
+                for (let j = 0; j < boxCount; j++) {
+                    imageRow.push(generateSvgImage(length))
+                }
+                images["list"].push(imageRow)
+            }
+
+            let correctImageIndex = [Math.floor(Math.random() * boxCount), Math.floor(Math.random() * boxCount)]
+
+            images["correctImageIndex"] = correctImageIndex
+
+            return images
+        }
+
+
+        function generateSvgImage(length) {
+
+            let colors = ["red", "blue", "green"]
+            let color = colors[Math.floor(Math.random() * colors.length)]
+            let lineStyle = { fill: "None", strokeWidth: 2, stroke: color }
+
+            let points = Math.floor(Math.random() * 10 + 5)
+            let cordinates = ""
+            for (let i = 0; i < points; i++) {
+                cordinates += Math.random() * length + "," + Math.random() * length + " "
+            }
+
+            return <svg width={length} height={length}>
+                <polyline points={cordinates} style={lineStyle} />
+            </svg>
+        }
+
+
+          //************************* FUNCTIONS END ******************************
+
+    </script>
+
+</body>
+
+</html>
